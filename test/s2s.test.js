@@ -7,6 +7,38 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { captureGitContext } from '../src/index.js';
 
+test('JSON input creates complete handoffs and rejects invalid data without replacing output', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 's2s-json-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cli = path.resolve('bin/s2s.js');
+  const run = (...args) => execFileSync(process.execPath, [cli, ...args], { cwd: root, encoding: 'utf8', stdio: 'pipe' });
+  await writeFile(path.join(root, 'app.js'), 'code');
+  const input = { task: 'Review', summary: 'Ready', decisions: ['Use sessions'], evidence: ['Tests passed'], questions: ['Deadline?'], nextSteps: ['Review code'], artifacts: ['app.js'] };
+  const source = path.join(root, 'context.json');
+  await writeFile(source, JSON.stringify(input));
+  run('handoff', '--input', 'context.json');
+  const file = path.join(root, '.s2s/handoff.json');
+  const saved = await readHandoff(file);
+  assert.deepEqual(saved.decisions, input.decisions);
+  assert.deepEqual(saved.nextSteps, input.nextSteps);
+  assert.equal(saved.artifacts[0].path, 'app.js');
+  assert.match(saved.artifacts[0].sha256, /^[a-f0-9]{64}$/);
+  const original = await readFile(file, 'utf8');
+  assert.throws(() => run('handoff', '--input', 'context.json', '--task', 'Conflict'), error => error.status === 2);
+  for (const bad of [null, [], { summary: 'Missing task' }, { ...input, extra: true }, { ...input, nextSteps: null }, { ...input, artifacts: [{}] }, { ...input, artifacts: ['missing.js'] }]) {
+    await writeFile(source, JSON.stringify(bad));
+    assert.throws(() => run('handoff', '--input', 'context.json', '--replace'), error => error.status === 2);
+    assert.equal(await readFile(file, 'utf8'), original);
+  }
+  await writeFile(source, '{');
+  assert.throws(() => run('handoff', '--input', 'context.json'), error => error.status === 2);
+  await writeFile(source, JSON.stringify({ task: 'Done', summary: 'Finished', status: 'complete' }));
+  run('handoff', 'reviews/done.json', '--input', 'context.json', '--root', root);
+  assert.equal((await readHandoff(path.join(root, 'reviews/done.json'))).status, 'complete');
+  run('handoff', '--input', 'context.json', '--replace');
+  assert.deepEqual((await readHandoff(file)).artifacts, []);
+});
+
 test('resume verifies artifacts before context and distinguishes completed and blocked tasks', async t => {
   const root = await mkdtemp(path.join(tmpdir(), 's2s-resume-'));
   t.after(() => rm(root, { recursive: true, force: true }));

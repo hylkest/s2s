@@ -8,6 +8,8 @@ versions are independent.
 
 ### Added
 
+- `s2s handoff --input context.json` accepts complete context from a JSON file,
+  validates fields and generates artifact hashes and Git context automatically.
 - Resume automatically checks artifacts, shows warnings before context, and
   distinguishes ready, blocked and completed tasks. Artifact mismatches return
   exit code `1` while keeping the handoff readable.

@@ -97,6 +97,41 @@ Completed handoffs are not instructions to restart completed work.
 
 ## Save a complete handoff in one command
 
+### JSON input
+
+Agents can write a simple context file instead of constructing content flags:
+
+```json
+{
+  "task": "Build login",
+  "summary": "Implementation ready for review",
+  "from": "implementer",
+  "to": "reviewer",
+  "decisions": ["Validate server-side"],
+  "evidence": ["Unit tests passed"],
+  "questions": ["How long should sessions last?"],
+  "nextSteps": ["Review error handling"],
+  "artifacts": ["src/login.js"]
+}
+```
+
+```bash
+s2s handoff --input context.json
+s2s handoff handoffs/login.json --input context.json --replace
+```
+
+Only `task` and `summary` are required. Optional `status` defaults to `ready`;
+agent labels and lists use the same defaults as flag-based creation. Artifact
+paths are relative to the current workspace or `--root`, not the input file's
+directory. The input file and output path are relative to the working directory.
+This input format is not a saved protocol document: provide paths, not hashes.
+s2s generates IDs, timestamps, hashes and Git context itself. Unknown fields,
+invalid values and mixing `--input` with content flags are rejected before
+saving. `--replace` and `--root` remain available. Existing output is protected
+by default. Without npm, use `node /path/to/s2s/bin/s2s.js handoff --input context.json`.
+
+### Command-line flags
+
 From your project directory, after installing s2s:
 
 ```bash

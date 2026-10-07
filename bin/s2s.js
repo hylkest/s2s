@@ -10,6 +10,7 @@ Commands:
   init                              Set up agent instructions in this project
   init <file> --task <goal> [--from <agent>] [--to <agent>]
   handoff [file] --task <goal> --summary <text> [options]
+  handoff [file] --input <json-file> [--replace] [--root <workspace>]
   list [directory] [--json]          List handoffs (default: .s2s/)
   add <file> <decision|evidence|question|next|artifact> <value>
   summary <file> <text>
@@ -85,20 +86,35 @@ try {
     const replaceIndex = args.indexOf('--replace');
     const replace = replaceIndex >= 0;
     if (replace) args.splice(replaceIndex, 1);
-    const task = option('task');
-    const summary = option('summary');
-    const from = option('from', 'unknown');
-    const to = option('to', 'any');
-    const status = option('status', 'ready');
+    const inputFile = option('input');
     const root = option('root', process.cwd());
-    const entries = {
-      decisions: repeatedOption('decision'), evidence: repeatedOption('evidence'),
-      questions: repeatedOption('question'), nextSteps: repeatedOption('next'),
-    };
-    const artifacts = repeatedOption('artifact');
-    if (args.length > 1 || args.some(arg => arg.startsWith('--'))) throw new Error('Usage: handoff [file] --task <goal> --summary <text> [options]');
-    if (typeof summary !== 'string' || !summary.trim()) throw new Error('--summary requires a non-empty value');
-    const handoff = Object.assign(createHandoff({ task, summary, from, to, status }), entries);
+    let handoff, artifacts;
+    if (inputFile !== undefined) {
+      if (args.length > 1 || args.some(arg => arg.startsWith('--'))) throw new Error('Do not combine --input with content flags. Usage: handoff [file] --input <json-file> [--replace] [--root <workspace>]');
+      const input = JSON.parse(await readFile(inputFile, 'utf8'));
+      if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Input must be a JSON object');
+      const allowed = ['task', 'summary', 'from', 'to', 'status', 'decisions', 'evidence', 'questions', 'nextSteps', 'artifacts'];
+      for (const key of Object.keys(input)) if (!allowed.includes(key)) throw new Error(`Unknown input field: ${key}`);
+      if (typeof input.summary !== 'string' || !input.summary.trim()) throw new Error('Input summary must be a non-empty string');
+      artifacts = input.artifacts === undefined ? [] : input.artifacts;
+      if (!Array.isArray(artifacts) || artifacts.some(item => typeof item !== 'string' || !item.trim())) throw new Error('Input artifacts must be an array of file paths');
+      handoff = createHandoff(input);
+      for (const key of ['decisions', 'evidence', 'questions', 'nextSteps']) if (input[key] !== undefined) handoff[key] = input[key];
+    } else {
+      const task = option('task');
+      const summary = option('summary');
+      const from = option('from', 'unknown');
+      const to = option('to', 'any');
+      const status = option('status', 'ready');
+      const entries = {
+        decisions: repeatedOption('decision'), evidence: repeatedOption('evidence'),
+        questions: repeatedOption('question'), nextSteps: repeatedOption('next'),
+      };
+      artifacts = repeatedOption('artifact');
+      if (args.length > 1 || args.some(arg => arg.startsWith('--'))) throw new Error('Usage: handoff [file] --task <goal> --summary <text> [options]');
+      if (typeof summary !== 'string' || !summary.trim()) throw new Error('--summary requires a non-empty value');
+      handoff = Object.assign(createHandoff({ task, summary, from, to, status }), entries);
+    }
     const result = validateHandoff(handoff);
     if (!result.valid) throw new Error(result.errors.join('\n'));
     // Finish validation and hash every reference before touching the destination.
@@ -145,6 +161,8 @@ tasks unless the user asks. For a new task, use a new handoff file or explicitly
 replace the previous handoff after reading it.
 
 Commands:
+- npx --no-install s2s handoff --input context.json
+- JSON input requires task and summary; optional decisions, evidence, questions, nextSteps and artifacts (file paths).
 - npx --no-install s2s list
 - npx --no-install s2s handoff --task "Your current task" --summary "Current state" --decision "Choice and reason" --evidence "Check and result" --next "Next action" --artifact path/to/file
 - Add --replace when updating an existing handoff; provide a complete snapshot.
