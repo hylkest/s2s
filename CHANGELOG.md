@@ -6,6 +6,8 @@ versions are independent.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-09
+
 ### Added
 
 - `s2s handoff --input context.json` accepts complete context from a JSON file,

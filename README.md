@@ -6,7 +6,7 @@ Portable, verifiable task handoffs between AI agents. A small open-source protoc
 
 An agent can hand over what it did, why it made decisions, what it checked, what remains uncertain and which files matter. The next agent receives structured context instead of an entire conversation. File hashes help detect stale references.
 
-**Version:** 0.3.0. Not published to npm. Requires Node.js 22+. This project implements a file-based handoff format.
+**Version:** 0.4.0. Not published to npm. Requires Node.js 22+. This project implements a file-based handoff format.
 
 ## Installation
 
@@ -259,7 +259,7 @@ with `handoff --replace` to capture the current context.
 
 No remotes, diffs, credentials or file contents are stored in Git metadata.
 
-- Run `s2s --version` to show the installed package version (currently `0.3.0`).
+- Run `s2s --version` to show the installed package version (currently `0.4.0`).
   With a local npm dependency, use `npx --no-install s2s --version`; without
   npm, use `node /absolute/path/to/s2s/bin/s2s.js --version`.
 - `init` without arguments configures the project; `init <file> --task <goal>` refuses to overwrite a handoff file. `add`, `summary` and `status` update it.
