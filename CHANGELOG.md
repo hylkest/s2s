@@ -6,6 +6,21 @@ versions are independent.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-09
+
+### Added
+
+- `s2s handoff --input context.json` accepts complete context from a JSON file,
+  validates fields and generates artifact hashes and Git context automatically.
+- Resume automatically checks artifacts, shows warnings before context, and
+  distinguishes ready, blocked and completed tasks. Artifact mismatches return
+  exit code `1` while keeping the handoff readable.
+
+### Changed
+
+- Removed the rename migration section from the README.
+- Highlighted the meaning of s2s (Session to Session) at the top of the README.
+
 ## [0.3.0] — 2026-10-02
 
 ### Added
